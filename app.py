@@ -65,7 +65,7 @@ def health():
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     return render_template('dashboard.html')
-
+# ── Send Digest ─────────────────────────────────────────
 @app.route('/send-digest', methods=['GET'])
 def send_digest_route():
     from digest import send_digest

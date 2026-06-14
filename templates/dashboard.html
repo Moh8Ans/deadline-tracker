@@ -259,7 +259,7 @@ Or ask <em>"show my deadlines"</em> to see what's coming up!
   </div>
 
 </div>
-
+let chatHistory = [];
 <script>
   // ── Clock ──
   function updateClock() {
@@ -333,14 +333,15 @@ Or ask <em>"show my deadlines"</em> to see what's coming up!
   }
 
   // ── Chat ──
-  function addMsg(text, role) {
-    const window = document.getElementById('chatWindow');
+  function addMsg(text, role, id = null) {
+    const chatWindow = document.getElementById('chatWindow');
     const div = document.createElement('div');
     div.className = `msg ${role}`;
     div.innerHTML = text;
-    window.appendChild(div);
-    window.scrollTop = window.scrollHeight;
-  }
+    if (id) div.id = id;
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
 
   async function sendMessage() {
     const input = document.getElementById('userInput');
@@ -350,16 +351,39 @@ Or ask <em>"show my deadlines"</em> to see what's coming up!
     addMsg(text, 'user');
     input.value = '';
 
-    // Simple keyword routing for demo
-    if (text.toLowerCase().includes('show') ||
-        text.toLowerCase().includes('list') ||
-        text.toLowerCase().includes('what')) {
-      await loadDeadlines();
-      addMsg('📋 Deadline board refreshed! Check the panel on the right.', 'bot');
-    } else {
-      addMsg('⏳ Logging deadline... <em>(connect to Foundry API for full AI parsing)</em>', 'bot');
+    // Add typing indicator
+    const typingId = 'typing-' + Date.now();
+    addMsg('<em>Earlybird is thinking... 🐦</em>', 'bot', typingId);
+
+    try {
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                message: text,
+                history: chatHistory
+            })
+        });
+        const data = await res.json();
+
+        // Remove typing indicator
+        document.getElementById(typingId)?.remove();
+
+        // Add real response
+        addMsg(data.reply, 'bot');
+
+        // Update history
+        chatHistory.push({role: 'user', content: text});
+        chatHistory.push({role: 'assistant', content: data.reply});
+
+        // Refresh deadlines after every message
+        await loadDeadlines();
+
+    } catch(e) {
+        document.getElementById(typingId)?.remove();
+        addMsg('⚠️ Could not reach Earlybird. Try again.', 'bot');
     }
-  }
+}
 
   // Auto-load on start
   loadDeadlines();

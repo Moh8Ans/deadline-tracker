@@ -72,5 +72,48 @@ def send_digest_route():
     send_digest()
     return jsonify({"message": "✅ Digest sent!"}), 200
 
+import requests as http_requests
+import os
+
+# ── Chat with Foundry Agent ─────────────────────────────
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.get_json()
+    user_message = data.get('message', '')
+    history = data.get('history', [])
+
+    endpoint = os.environ.get("FOUNDRY_ENDPOINT")
+    key = os.environ.get("FOUNDRY_KEY")
+    agent_name = os.environ.get("AGENT_NAME", "Earlybird")
+
+    if not endpoint or not key:
+        return jsonify({"reply": "⚠️ Foundry not configured."}), 500
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}"
+    }
+
+    messages = history + [{"role": "user", "content": user_message}]
+
+    payload = {
+        "model": agent_name,
+        "input": messages
+    }
+
+    try:
+        response = http_requests.post(
+            endpoint,
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+        result = response.json()
+        reply = result.get("output_text") or \
+                result.get("choices", [{}])[0].get("message", {}).get("content", "No response")
+        return jsonify({"reply": reply}), 200
+    except Exception as e:
+        return jsonify({"reply": f"Error: {str(e)}"}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)

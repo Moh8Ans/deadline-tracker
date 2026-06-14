@@ -66,5 +66,11 @@ def health():
 def dashboard():
     return render_template('dashboard.html')
 
+@app.route('/send-digest', methods=['GET'])
+def send_digest_route():
+    from digest import send_digest
+    send_digest()
+    return jsonify({"message": "✅ Digest sent!"}), 200
+
 if __name__ == '__main__':
     app.run(debug=True)
